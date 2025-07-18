@@ -6,4 +6,6 @@ __pycache__/
 venv
 input
 
-weights/
+weights/u2net.onnx
+output/*
+!output/.gitkeep

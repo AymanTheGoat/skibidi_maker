@@ -1,0 +1,8 @@
+{
+    // Hide venv and __pycache__ folders in VS Code Explorer
+    "files.exclude": {
+        "**/venv": true,
+        "**/__pycache__": true,
+        "weights/haarcascade.xml": true
+    }
+}

@@ -1,11 +1,12 @@
+
 import os
 
 def check_file_exists(filepath):
-    if not os.path.isfile(filepath):
-        print(f"Error: File not found : {filepath}")
-        exit(1)
+    """Check if file exists and return boolean instead of exiting"""
+    return os.path.isfile(filepath)
 
 def getSmallestAvailableNumber():
+    """Get the smallest available number for output filename"""
     folder = "output"
     prefix = "output_"
 

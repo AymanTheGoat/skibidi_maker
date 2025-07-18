@@ -9,18 +9,25 @@ import logging
 warnings.filterwarnings('ignore')
 logging.getLogger("onnxruntime").setLevel(logging.ERROR)
 
+from .logger import Logger
+logger = Logger()
+
 def _load_model(model_path: str):
     """Load ONNX model and return session with input/output info."""
-    providers = ['CPUExecutionProvider']
-    sess_options = ort.SessionOptions()
-    sess_options.log_severity_level = 3
-    
-    session = ort.InferenceSession(model_path, sess_options, providers=providers)
-    input_name = session.get_inputs()[0].name
-    output_names = [output.name for output in session.get_outputs()]
-    input_shape = session.get_inputs()[0].shape
-    
-    return session, input_name, output_names, input_shape[2], input_shape[3]
+    try:
+        providers = ['CPUExecutionProvider']
+        sess_options = ort.SessionOptions()
+        sess_options.log_severity_level = 3
+        
+        session = ort.InferenceSession(model_path, sess_options, providers=providers)
+        input_name = session.get_inputs()[0].name
+        output_names = [output.name for output in session.get_outputs()]
+        input_shape = session.get_inputs()[0].shape
+        
+        return session, input_name, output_names, input_shape[2], input_shape[3]
+    except Exception as e:
+        logger.error(f"Failed to load ULFGFD model: {str(e)}")
+        raise
 
 def _preprocess_image(image: np.ndarray, model_width: int, model_height: int) -> Tuple[np.ndarray, float, float]:
     """Preprocess image for model inference."""
@@ -148,6 +155,7 @@ def getBoundingBoxsULFGFD(image: np.ndarray, model_path: str = "weights/version-
         List of ((x1, y1), (x2, y2)) tuples for detected heads
     """
     try:
+        logger.info("Loading ULFGFD model")
         # Load model
         session, input_name, output_names, model_height, model_width = _load_model(model_path)
         
@@ -155,19 +163,18 @@ def getBoundingBoxsULFGFD(image: np.ndarray, model_path: str = "weights/version-
         input_tensor, scale_x, scale_y = _preprocess_image(image, model_width, model_height)
         
         # Run inference
+        logger.info("Running face detection inference")
         outputs = session.run(output_names, {input_name: input_tensor})
-        
-        # {len(outputs)} outputs
         
         # Post-process
         raw_detections = _postprocess_detections(outputs, scale_x, scale_y, model_width, model_height, confidence_threshold) # type: ignore
         
-        # {len(raw_detections)} raw detections
+        logger.info(f"Found {len(raw_detections)} raw detections")
         
         # Filter
         filtered_detections = _filter_detections(raw_detections, image.shape[:2])
         
-        # {len(filtered_detections)} detections after filtering
+        logger.info(f"After filtering: {len(filtered_detections)} valid detections")
         
         # Convert to head bboxes and required format
         head_boxes = []
@@ -177,10 +184,8 @@ def getBoundingBoxsULFGFD(image: np.ndarray, model_path: str = "weights/version-
             x2, y2 = head_x + head_w, head_y + head_h
             head_boxes.append(((x1, y1), (x2, y2)))
         
-        # {len(head_boxes)}
         return head_boxes
         
     except Exception as e:
-        print(f"Error during head detection using Ultra-Light-Fast-Generic-Face-Detector-1MB: {str(e)}")
+        logger.error(f"Error during ULFGFD detection: {str(e)}")
         return []
-
